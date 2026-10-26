@@ -1,4 +1,5 @@
 """Leave balance query selectors."""
+
 from django.db.models import QuerySet
 
 from modules.leave.models import LeaveBalance, LeaveTypeConfig

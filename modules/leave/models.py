@@ -5,6 +5,7 @@ Strict compliance with architectural rules:
 - Intra-module FKs are allowed (LeaveActionLog -> LeaveApplication).
 - Invariants guarded by explicit database CheckConstraints and indexes.
 """
+
 from decimal import Decimal
 
 from django.db import models
@@ -127,7 +128,9 @@ class LeaveApplication(TimeStampedModel):
 
     # Substitute coverage (ACT-02)
     substitute_user_id = models.IntegerField(null=True, blank=True, db_index=True)
-    substitute_status = models.CharField(max_length=16, choices=SUBSTITUTE_STATUS_CHOICES, default="PENDING")
+    substitute_status = models.CharField(
+        max_length=16, choices=SUBSTITUTE_STATUS_CHOICES, default="PENDING"
+    )
     substitute_remarks = models.TextField(blank=True)
 
     # Station Leave (BR-EL-013)
@@ -139,7 +142,9 @@ class LeaveApplication(TimeStampedModel):
 
     # Unit Head Review (ACT-03, EL-UC-003)
     unit_head_user_id = models.IntegerField(null=True, blank=True)
-    unit_head_recommendation = models.CharField(max_length=20, blank=True)  # RECOMMENDED, NOT_RECOMMENDED, APPROVED, REJECTED
+    unit_head_recommendation = models.CharField(
+        max_length=20, blank=True
+    )  # RECOMMENDED, NOT_RECOMMENDED, APPROVED, REJECTED
     unit_head_remarks = models.TextField(blank=True)
 
     # Establishment Processing (ACT-04, EL-UC-004)
@@ -161,7 +166,9 @@ class LeaveApplication(TimeStampedModel):
     resumption_status = models.CharField(max_length=16, default="NONE")  # NONE, SUBMITTED, REVIEWED
     actual_resumption_date = models.DateField(null=True, blank=True)
     resumption_remarks = models.TextField(blank=True)
-    resumption_days_adjusted = models.DecimalField(max_digits=5, decimal_places=1, default=Decimal("0.0"))
+    resumption_days_adjusted = models.DecimalField(
+        max_digits=5, decimal_places=1, default=Decimal("0.0")
+    )
 
     # Retrospective offline leave (EL-UC-016)
     is_offline = models.BooleanField(default=False)
@@ -179,12 +186,16 @@ class LeaveApplication(TimeStampedModel):
         ]
         indexes = [
             models.Index(fields=["applicant_user_id", "status"], name="leave_app_user_status_idx"),
-            models.Index(fields=["substitute_user_id", "substitute_status"], name="leave_sub_status_idx"),
+            models.Index(
+                fields=["substitute_user_id", "substitute_status"], name="leave_sub_status_idx"
+            ),
             models.Index(fields=["start_date", "end_date"], name="leave_dates_idx"),
         ]
 
     def __str__(self) -> str:
-        return f"Leave #{self.pk} ({self.leave_type}) by User {self.applicant_user_id}: {self.status}"
+        return (
+            f"Leave #{self.pk} ({self.leave_type}) by User {self.applicant_user_id}: {self.status}"
+        )
 
 
 class LeaveActionLog(TimeStampedModel):
@@ -206,7 +217,10 @@ class LeaveActionLog(TimeStampedModel):
         ]
 
     def __str__(self) -> str:
-        return f"Log #{self.pk} on #{self.application_id}: {self.action} ({self.from_status} -> {self.to_status})"
+        return (
+            f"Log #{self.pk} on #{self.application_id}: "
+            f"{self.action} ({self.from_status} -> {self.to_status})"
+        )
 
 
 class LeaveHierarchyConfig(TimeStampedModel):
@@ -233,4 +247,7 @@ class LeaveSLAConfig(TimeStampedModel):
         db_table = "leave_sla_config"
 
     def __str__(self) -> str:
-        return f"SLA: {self.task_type} (reminder={self.reminder_threshold_hours}h, escalation={self.escalation_threshold_hours}h)"
+        return (
+            f"SLA: {self.task_type} (reminder={self.reminder_threshold_hours}h, "
+            f"escalation={self.escalation_threshold_hours}h)"
+        )

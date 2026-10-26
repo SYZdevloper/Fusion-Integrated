@@ -1,4 +1,5 @@
 """DRF serializers for the Leave module."""
+
 from rest_framework import serializers
 
 from modules.leave.models import (
@@ -15,8 +16,13 @@ class LeaveTypeConfigSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveTypeConfig
         fields = [
-            "code", "name", "annual_entitlement", "max_carry_forward",
-            "is_continuous_counting", "requires_substitute", "applies_to",
+            "code",
+            "name",
+            "annual_entitlement",
+            "max_carry_forward",
+            "is_continuous_counting",
+            "requires_substitute",
+            "applies_to",
         ]
 
 
@@ -24,8 +30,14 @@ class LeaveBalanceSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveBalance
         fields = [
-            "id", "user_id", "year", "leave_type",
-            "credited", "availed", "balance", "updated_at",
+            "id",
+            "user_id",
+            "year",
+            "leave_type",
+            "credited",
+            "availed",
+            "balance",
+            "updated_at",
         ]
 
 
@@ -33,8 +45,13 @@ class HolidayCalendarSerializer(serializers.ModelSerializer):
     class Meta:
         model = HolidayCalendar
         fields = [
-            "id", "year", "date", "name",
-            "is_restricted_holiday", "is_closed_holiday", "is_published",
+            "id",
+            "year",
+            "date",
+            "name",
+            "is_restricted_holiday",
+            "is_closed_holiday",
+            "is_published",
         ]
 
 
@@ -42,7 +59,12 @@ class VacationPeriodSerializer(serializers.ModelSerializer):
     class Meta:
         model = VacationPeriod
         fields = [
-            "id", "year", "name", "start_date", "end_date", "is_published",
+            "id",
+            "year",
+            "name",
+            "start_date",
+            "end_date",
+            "is_published",
         ]
 
 
@@ -50,8 +72,13 @@ class LeaveActionLogSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveActionLog
         fields = [
-            "id", "actor_user_id", "action", "from_status",
-            "to_status", "remarks", "created_at",
+            "id",
+            "actor_user_id",
+            "action",
+            "from_status",
+            "to_status",
+            "remarks",
+            "created_at",
         ]
 
 
@@ -61,19 +88,44 @@ class LeaveApplicationReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = LeaveApplication
         fields = [
-            "id", "applicant_user_id", "leave_type", "start_date", "end_date",
-            "half_day_type", "days_count", "reason", "status",
-            "substitute_user_id", "substitute_status", "substitute_remarks",
-            "is_station_leave", "station_departure_date", "station_arrival_date",
-            "station_address", "contact_number",
-            "unit_head_user_id", "unit_head_recommendation", "unit_head_remarks",
-            "establishment_remarks", "sanctioning_authority_user_id",
-            "sanction_decision", "sanction_remarks",
-            "parent_leave_id", "is_cancellation_requested", "cancellation_reason",
-            "resumption_status", "actual_resumption_date", "resumption_remarks",
-            "resumption_days_adjusted", "is_offline", "offline_sanction_ref",
-            "offline_sanction_date", "offline_sanctioned_by",
-            "created_at", "updated_at", "action_logs",
+            "id",
+            "applicant_user_id",
+            "leave_type",
+            "start_date",
+            "end_date",
+            "half_day_type",
+            "days_count",
+            "reason",
+            "status",
+            "substitute_user_id",
+            "substitute_status",
+            "substitute_remarks",
+            "is_station_leave",
+            "station_departure_date",
+            "station_arrival_date",
+            "station_address",
+            "contact_number",
+            "unit_head_user_id",
+            "unit_head_recommendation",
+            "unit_head_remarks",
+            "establishment_remarks",
+            "sanctioning_authority_user_id",
+            "sanction_decision",
+            "sanction_remarks",
+            "parent_leave_id",
+            "is_cancellation_requested",
+            "cancellation_reason",
+            "resumption_status",
+            "actual_resumption_date",
+            "resumption_remarks",
+            "resumption_days_adjusted",
+            "is_offline",
+            "offline_sanction_ref",
+            "offline_sanction_date",
+            "offline_sanctioned_by",
+            "created_at",
+            "updated_at",
+            "action_logs",
         ]
 
 

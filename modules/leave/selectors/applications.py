@@ -1,4 +1,5 @@
 """Application query selectors with ownership and scope filtering."""
+
 from django.db.models import QuerySet
 
 from core.api.exceptions import NotFoundError
@@ -33,16 +34,17 @@ def get_application_or_404(application_id: int, principal=None) -> LeaveApplicat
     try:
         app = LeaveApplication.objects.get(pk=application_id)
     except LeaveApplication.DoesNotExist:
-        raise NotFoundError(f"Leave application #{application_id} not found.")
+        raise NotFoundError(f"Leave application #{application_id} not found.") from None
 
-    if principal:
-        if not principal.has_any_permission("leave.request.view", "leave.request.approve"):
-            # Check ownership, substitute assignment, or sanction authority
-            if (
-                app.applicant_user_id != principal.user_id
-                and app.substitute_user_id != principal.user_id
-            ):
-                raise NotFoundError(f"Leave application #{application_id} not found.")
+    if (
+        principal
+        and not principal.has_any_permission("leave.request.view", "leave.request.approve")
+        and (
+            app.applicant_user_id != principal.user_id
+            and app.substitute_user_id != principal.user_id
+        )
+    ):
+        raise NotFoundError(f"Leave application #{application_id} not found.")
 
     return app
 
@@ -54,5 +56,11 @@ def list_application_logs(application_id: int) -> QuerySet[LeaveActionLog]:
 def list_active_leaves_for_user(user_id: int) -> QuerySet[LeaveApplication]:
     return LeaveApplication.objects.filter(
         applicant_user_id=user_id,
-        status__in=["APPROVED", "AWAITING_SUBSTITUTE", "AWAITING_UNIT_HEAD", "AWAITING_ESTABLISHMENT", "AWAITING_SANCTION"],
+        status__in=[
+            "APPROVED",
+            "AWAITING_SUBSTITUTE",
+            "AWAITING_UNIT_HEAD",
+            "AWAITING_ESTABLISHMENT",
+            "AWAITING_SANCTION",
+        ],
     )

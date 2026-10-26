@@ -3,6 +3,7 @@
 Plural by signature on purpose: there is no get_x(id), because a singular
 lookup is what gets called inside a loop. Enforced by ops/checks/contracts_are_plural.py.
 """
+
 from __future__ import annotations
 
 from collections.abc import Sequence

@@ -1,4 +1,5 @@
 """Ongoing leave extension workflow (CW-EL-03, EL-UC-009)."""
+
 from datetime import date, timedelta
 
 from django.db import transaction
@@ -26,7 +27,7 @@ def request_extension(
         try:
             parent = LeaveApplication.objects.select_for_update().get(pk=parent_application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{parent_application_id} not found.")
+            raise NotFoundError(f"Application #{parent_application_id} not found.") from None
 
         if parent.applicant_user_id != principal.user_id:
             raise ConflictError("You can only request extension for your own leave.")
@@ -40,10 +41,12 @@ def request_extension(
                 today=date.today(),
             )
         except DomainError as e:
-            raise ConflictError(e.message)
+            raise ConflictError(e.message) from None
 
         if new_end_date <= parent.end_date:
-            raise ConflictError(f"New end date {new_end_date} must be after current end date {parent.end_date}.")
+            raise ConflictError(
+                f"New end date {new_end_date} must be after current end date {parent.end_date}."
+            )
 
         # Incremental period is from parent.end_date + 1 to new_end_date
         inc_start = parent.end_date + timedelta(days=1)
@@ -61,10 +64,14 @@ def request_extension(
         try:
             validate_balance_sufficient(inc_days, bal.balance)
         except DomainError as e:
-            raise ConflictError(e.message)
+            raise ConflictError(e.message) from None
 
         sub_id = substitute_user_id or parent.substitute_user_id
-        initial_status = LeaveStatus.AWAITING_SUBSTITUTE.value if sub_id else LeaveStatus.AWAITING_UNIT_HEAD.value
+        initial_status = (
+            LeaveStatus.AWAITING_SUBSTITUTE.value
+            if sub_id
+            else LeaveStatus.AWAITING_UNIT_HEAD.value
+        )
 
         ext_app = LeaveApplication.objects.create(
             applicant_user_id=principal.user_id,

@@ -1,4 +1,5 @@
 """Calendar selectors for holidays and vacation periods."""
+
 from datetime import date
 
 from django.db.models import QuerySet
@@ -22,20 +23,23 @@ def list_vacations(year: int, published_only: bool = True) -> QuerySet[VacationP
 
 def get_closed_holiday_dates(year: int) -> set[date]:
     return set(
-        HolidayCalendar.objects.filter(year=year, is_closed_holiday=True, is_published=True)
-        .values_list("date", flat=True)
+        HolidayCalendar.objects.filter(
+            year=year, is_closed_holiday=True, is_published=True
+        ).values_list("date", flat=True)
     )
 
 
 def get_restricted_holiday_dates(year: int) -> set[date]:
     return set(
-        HolidayCalendar.objects.filter(year=year, is_restricted_holiday=True, is_published=True)
-        .values_list("date", flat=True)
+        HolidayCalendar.objects.filter(
+            year=year, is_restricted_holiday=True, is_published=True
+        ).values_list("date", flat=True)
     )
 
 
 def get_vacation_period_tuples(year: int) -> list[tuple[date, date]]:
     return list(
-        VacationPeriod.objects.filter(year=year, is_published=True)
-        .values_list("start_date", "end_date")
+        VacationPeriod.objects.filter(year=year, is_published=True).values_list(
+            "start_date", "end_date"
+        )
     )

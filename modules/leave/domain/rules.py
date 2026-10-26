@@ -1,4 +1,5 @@
 """Business rules and validations adhering to ELM Specifications (v1.4)."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -6,6 +7,7 @@ from .entities import HalfDayType, LeaveCategory, LeaveStatus
 from .errors import (
     IneligibleSubstituteError,
     InsufficientBalanceError,
+    InvalidDateRangeError,
     InvalidStateTransitionError,
     OverlappingLeaveError,
     RestrictedHolidayMismatchError,
@@ -15,7 +17,7 @@ from .errors import (
 
 def validate_category_eligibility(user_kind: str, category: str) -> None:
     """Validate that the employee kind is eligible for the requested category.
-    
+
     - Staff receives EL directly (30 days/year); Faculty receives VL (60 days/year)
       and converts unused VL to EL at year-end.
     - Both receive CL, RH, SCL, COL.
@@ -27,11 +29,23 @@ def validate_category_eligibility(user_kind: str, category: str) -> None:
         raise InvalidStateTransitionError("Vacation Leave (VL) is only available for Faculty.")
 
 
-def validate_rh_date(requested_date: date, rh_dates: set[date]) -> None:
-    """BR-EL-004: An RH request must correspond to an applicable Restricted Holiday."""
-    if requested_date not in rh_dates:
+def validate_rh_date(start_date: date, end_date: date, rh_dates: set[date]) -> None:
+    """BR-EL-003: An RH request must be for a single day and match a published RH date."""
+    if start_date != end_date:
         raise RestrictedHolidayMismatchError(
-            f"Date {requested_date} is not listed in the published Restricted Holiday calendar."
+            "Restricted Holiday (RH) must be requested for a single day."
+        )
+    if start_date not in rh_dates:
+        raise RestrictedHolidayMismatchError(
+            f"Date {start_date} is not listed in the published Restricted Holiday calendar."
+        )
+
+
+def validate_positive_leave_days(days_count: Decimal) -> None:
+    """BR-EL-011: Leave request duration must be strictly positive (at least 0.5 days)."""
+    if days_count <= Decimal("0.0"):
+        raise InvalidDateRangeError(
+            "Requested leave period has 0 working days (weekends or closed holidays)."
         )
 
 
@@ -40,7 +54,7 @@ def validate_vacation_period(
     end_date: date,
     vacation_periods: list[tuple[date, date]],
 ) -> None:
-    """BR-EL-007: VL may be availed only during an applicable academic vacation period."""
+    """BR-EL-006: VL may be availed only during an applicable academic vacation period."""
     in_vacation = False
     for v_start, v_end in vacation_periods:
         if v_start <= start_date and end_date <= v_end:
@@ -48,7 +62,8 @@ def validate_vacation_period(
             break
     if not in_vacation:
         raise VacationCalendarMismatchError(
-            f"Requested VL period {start_date} to {end_date} does not fall within a published vacation period."
+            f"Requested VL period {start_date} to {end_date} does not fall "
+            f"within a published vacation period."
         )
 
 
@@ -79,8 +94,8 @@ def validate_no_overlap(
     new_category: str,
     new_half_day: str = HalfDayType.FULL.value,
 ) -> None:
-    """BR-EL-013: A new request shall not impermissibly overlap active pending or approved leave.
-    
+    """BR-EL-012: A new request shall not impermissibly overlap active pending or approved leave.
+
     First-half and second-half CL on the same date are permitted.
     """
     for ex in existing_leaves:
@@ -113,7 +128,8 @@ def validate_balance_sufficient(
     """BR-EL-002: Ensure available balance is sufficient."""
     if requested_days > available_balance:
         raise InsufficientBalanceError(
-            f"Requested {requested_days} days exceeds available balance of {available_balance} days."
+            f"Requested {requested_days} days exceeds available balance "
+            f"of {available_balance} days."
         )
 
 
@@ -122,12 +138,13 @@ def validate_cancellation_allowed(
     start_date: date,
     today: date,
 ) -> None:
-    """BR-EL-023 / BR-EL-024: Cancellation only before the approved leave begins."""
+    """BR-EL-023: Cancellation only before the approved leave begins."""
     if leave_status != LeaveStatus.APPROVED.value:
         raise InvalidStateTransitionError("Only approved leave can be cancelled.")
     if today >= start_date:
         raise InvalidStateTransitionError(
-            "Approved leave cannot be cancelled on or after its start date. Extension or Resumption applies."
+            "Approved leave cannot be cancelled on or after its start date. "
+            "Extension or Resumption applies."
         )
 
 
@@ -142,9 +159,22 @@ def validate_extension_allowed(
     if leave_status != LeaveStatus.APPROVED.value:
         raise InvalidStateTransitionError("Only approved leave can be extended.")
     if category not in (LeaveCategory.EL.value, LeaveCategory.COL.value, LeaveCategory.VL.value):
-        raise InvalidStateTransitionError(f"Extension is only permitted for EL, COL, or VL (not {category}).")
+        raise InvalidStateTransitionError(
+            f"Extension is only permitted for EL, COL, or VL (not {category})."
+        )
     if today < start_date or today > end_date:
         raise InvalidStateTransitionError("Extension can only be requested while leave is ongoing.")
+
+
+def validate_resumption_allowed(
+    approved_start: date,
+    actual_resumption_date: date,
+) -> None:
+    """BR-EL-027: Resumption date must not precede the leave start date."""
+    if actual_resumption_date < approved_start:
+        raise InvalidStateTransitionError(
+            "Actual resumption date cannot be earlier than leave start date."
+        )
 
 
 def calculate_resumption_adjustment(
@@ -155,7 +185,7 @@ def calculate_resumption_adjustment(
     closed_holiday_dates: set[date] | None = None,
 ) -> Decimal:
     """BR-EL-028 / BR-EL-029: Calculate balance adjustment for resumption.
-    
+
     Returns:
     - 0 if resumed on approved_end date.
     - Negative Decimal (credit back) if resumed earlier than approved_end.
@@ -166,8 +196,12 @@ def calculate_resumption_adjustment(
 
     from .counting import calculate_leave_days
 
-    approved_days = calculate_leave_days(category, approved_start, approved_end, closed_holiday_dates=closed_holiday_dates)
-    actual_days = calculate_leave_days(category, approved_start, actual_resumption_date, closed_holiday_dates=closed_holiday_dates)
+    approved_days = calculate_leave_days(
+        category, approved_start, approved_end, closed_holiday_dates=closed_holiday_dates
+    )
+    actual_days = calculate_leave_days(
+        category, approved_start, actual_resumption_date, closed_holiday_dates=closed_holiday_dates
+    )
 
     # Difference: positive means more days used (deduct), negative means fewer used (refund)
     return actual_days - approved_days
@@ -178,12 +212,12 @@ def calculate_year_end_conversions(
     is_faculty: bool,
 ) -> tuple[dict[str, Decimal], Decimal]:
     """BR-EL-003, BR-EL-004, BR-EL-007, BR-EL-008: Year-end processing outcomes.
-    
+
     - CL, RH, SCL: unused balances lapse to 0.
     - VL (Faculty): converts to EL at 2 VL : 1 EL (including 0.5 fractions).
       Unused VL itself becomes 0.
     - EL, COL: carry forward.
-    
+
     Returns (new_balances, vl_to_el_credit).
     """
     new_balances = dict(balances)

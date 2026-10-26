@@ -1,23 +1,24 @@
 """Domain entities and enums for Leave Management."""
-from enum import Enum
+
+from enum import StrEnum
 
 
-class LeaveCategory(str, Enum):
-    CL = "CL"      # Casual Leave (8 days/yr, half days supported, lapses)
-    RH = "RH"      # Restricted Holiday (2 days/yr, lapses)
-    SCL = "SCL"    # Special Casual Leave (up to 15 days/yr, lapses)
-    EL = "EL"      # Earned Leave (30 days/yr for staff, continuous counting, carries forward)
-    COL = "COL"    # Commuted Leave (20 days/yr, carries forward)
-    VL = "VL"      # Vacation Leave (60 days/yr for faculty, converts 2:1 to EL at year end)
+class LeaveCategory(StrEnum):
+    CL = "CL"  # Casual Leave (8 days/yr, half days supported, lapses)
+    RH = "RH"  # Restricted Holiday (2 days/yr, lapses)
+    SCL = "SCL"  # Special Casual Leave (up to 15 days/yr, lapses)
+    EL = "EL"  # Earned Leave (30 days/yr for staff, continuous counting, carries forward)
+    COL = "COL"  # Commuted Leave (20 days/yr, carries forward)
+    VL = "VL"  # Vacation Leave (60 days/yr for faculty, converts 2:1 to EL at year end)
 
 
-class HalfDayType(str, Enum):
+class HalfDayType(StrEnum):
     FULL = "FULL"
     FIRST_HALF = "FIRST_HALF"
     SECOND_HALF = "SECOND_HALF"
 
 
-class LeaveStatus(str, Enum):
+class LeaveStatus(StrEnum):
     DRAFT = "DRAFT"
     AWAITING_SUBSTITUTE = "AWAITING_SUBSTITUTE"
     SUBSTITUTE_DECLINED = "SUBSTITUTE_DECLINED"
@@ -31,20 +32,20 @@ class LeaveStatus(str, Enum):
     CANCELLED = "CANCELLED"
 
 
-class SubstituteStatus(str, Enum):
+class SubstituteStatus(StrEnum):
     PENDING = "PENDING"
     ACCEPTED = "ACCEPTED"
     DECLINED = "DECLINED"
 
 
-class ReviewDecision(str, Enum):
+class ReviewDecision(StrEnum):
     RECOMMENDED = "RECOMMENDED"
     NOT_RECOMMENDED = "NOT_RECOMMENDED"
     APPROVED = "APPROVED"
     REJECTED = "REJECTED"
 
 
-class ResumptionStatus(str, Enum):
+class ResumptionStatus(StrEnum):
     NONE = "NONE"
     SUBMITTED = "SUBMITTED"
     REVIEWED = "REVIEWED"

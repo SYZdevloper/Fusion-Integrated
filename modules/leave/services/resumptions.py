@@ -1,4 +1,5 @@
 """Resumption of duty submission and review (CW-EL-04, EL-UC-010, EL-UC-011)."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -6,7 +7,8 @@ from django.db import transaction
 
 from core.api.exceptions import ConflictError, NotFoundError
 from modules.leave.domain.entities import LeaveCategory, ResumptionStatus
-from modules.leave.domain.rules import calculate_resumption_adjustment
+from modules.leave.domain.errors import DomainError
+from modules.leave.domain.rules import calculate_resumption_adjustment, validate_resumption_allowed
 from modules.leave.models import LeaveActionLog, LeaveApplication, LeaveBalance
 from modules.leave.selectors.calendar import get_closed_holiday_dates
 
@@ -17,26 +19,42 @@ def submit_resumption(
     actual_resumption_date: date,
     remarks: str = "",
 ) -> LeaveApplication:
-    """Employee submits actual resumption date after EL/COL/VL (EL-UC-010)."""
+    """Employee submits actual resumption date after EL/COL/VL (EL-UC-010, BR-EL-027)."""
     with transaction.atomic():
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.applicant_user_id != principal.user_id:
             raise ConflictError("You can only submit resumption for your own leave.")
 
-        if app.leave_type not in (LeaveCategory.EL.value, LeaveCategory.COL.value, LeaveCategory.VL.value):
+        if app.leave_type not in (
+            LeaveCategory.EL.value,
+            LeaveCategory.COL.value,
+            LeaveCategory.VL.value,
+        ):
             raise ConflictError("Formal resumption is only supported for EL, COL, and VL.")
 
         if app.status != "APPROVED":
             raise ConflictError("Resumption can only be submitted for approved leaves.")
 
+        try:
+            validate_resumption_allowed(app.start_date, actual_resumption_date)
+        except DomainError as e:
+            raise ConflictError(e.message) from None
+
         app.resumption_status = ResumptionStatus.SUBMITTED.value
         app.actual_resumption_date = actual_resumption_date
         app.resumption_remarks = remarks
-        app.save(update_fields=["resumption_status", "actual_resumption_date", "resumption_remarks", "updated_at"])
+        app.save(
+            update_fields=[
+                "resumption_status",
+                "actual_resumption_date",
+                "resumption_remarks",
+                "updated_at",
+            ]
+        )
 
         LeaveActionLog.objects.create(
             application=app,
@@ -60,7 +78,7 @@ def review_resumption(
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.resumption_status != ResumptionStatus.SUBMITTED.value:
             raise ConflictError("Resumption is not pending review.")

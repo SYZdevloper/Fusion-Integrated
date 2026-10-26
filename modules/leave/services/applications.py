@@ -1,4 +1,5 @@
 """Leave application submission and withdrawal services."""
+
 from datetime import date
 from decimal import Decimal
 
@@ -12,6 +13,7 @@ from modules.leave.domain.rules import (
     validate_balance_sufficient,
     validate_category_eligibility,
     validate_no_overlap,
+    validate_positive_leave_days,
     validate_rh_date,
     validate_substitute_eligibility,
     validate_vacation_period,
@@ -43,7 +45,7 @@ def submit_application(
     try:
         validate_category_eligibility(user_kind, category)
     except DomainError as e:
-        raise BadRequestError(e.message)
+        raise BadRequestError(e.message) from None
 
     current_year = start_date.year
     ensure_user_balances_initialized(user_id, current_year, user_kind)
@@ -54,15 +56,15 @@ def submit_application(
 
     if category == LeaveCategory.RH.value:
         try:
-            validate_rh_date(start_date, rh_holidays)
+            validate_rh_date(start_date, end_date, rh_holidays)
         except DomainError as e:
-            raise BadRequestError(e.message)
+            raise BadRequestError(e.message) from None
 
     if category == LeaveCategory.VL.value:
         try:
             validate_vacation_period(start_date, end_date, vacations)
         except DomainError as e:
-            raise BadRequestError(e.message)
+            raise BadRequestError(e.message) from None
 
     try:
         days_count = calculate_leave_days(
@@ -72,22 +74,27 @@ def submit_application(
             half_day_type=half_day,
             closed_holiday_dates=closed_holidays,
         )
+        validate_positive_leave_days(days_count)
     except DomainError as e:
-        raise BadRequestError(e.message)
+        raise BadRequestError(e.message) from None
 
     with transaction.atomic():
         # Balance validation
-        bal = LeaveBalance.objects.select_for_update().filter(
-            user_id=user_id,
-            year=current_year,
-            leave_type=category,
-        ).first()
+        bal = (
+            LeaveBalance.objects.select_for_update()
+            .filter(
+                user_id=user_id,
+                year=current_year,
+                leave_type=category,
+            )
+            .first()
+        )
 
         available = bal.balance if bal else Decimal("0.0")
         try:
             validate_balance_sufficient(days_count, available)
         except DomainError as e:
-            raise ConflictError(e.message)
+            raise ConflictError(e.message) from None
 
         # Overlap validation
         active_leaves = LeaveApplication.objects.filter(
@@ -110,7 +117,7 @@ def submit_application(
                 new_half_day=half_day,
             )
         except DomainError as e:
-            raise ConflictError(e.message)
+            raise ConflictError(e.message) from None
 
         # Substitute validation
         if substitute_user_id:
@@ -129,10 +136,10 @@ def submit_application(
                     requested_end=end_date,
                 )
             except DomainError as e:
-                raise ConflictError(e.message)
+                raise ConflictError(e.message) from None
 
         # Initial workflow routing
-        is_director = principal.active_role == "Director"
+        is_director = getattr(principal, "active_role", None) == "Director"
         if substitute_user_id:
             initial_status = LeaveStatus.AWAITING_SUBSTITUTE.value
             sub_status = "PENDING"
@@ -184,7 +191,7 @@ def withdraw_application(application_id: int, principal) -> LeaveApplication:
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.applicant_user_id != principal.user_id:
             raise ConflictError("You can only withdraw your own applications.")

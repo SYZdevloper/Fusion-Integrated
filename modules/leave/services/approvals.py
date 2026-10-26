@@ -1,4 +1,5 @@
 """Review and approval services for Unit Head, Establishment, and Sanctioning Authorities."""
+
 from django.db import transaction
 
 from core.api.exceptions import ConflictError, NotFoundError
@@ -17,10 +18,12 @@ def review_at_unit_head(
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.status != LeaveStatus.AWAITING_UNIT_HEAD.value:
-            raise ConflictError(f"Application is not in AWAITING_UNIT_HEAD (status: '{app.status}').")
+            raise ConflictError(
+                f"Application is not in AWAITING_UNIT_HEAD (status: '{app.status}')."
+            )
 
         from_status = app.status
         app.unit_head_user_id = principal.user_id
@@ -47,15 +50,23 @@ def review_at_unit_head(
                 app.unit_head_recommendation = ReviewDecision.REJECTED.value
         else:
             # BR-EL-017: Unit Head records Recommended or Not Recommended; continues routing!
-            if decision not in (ReviewDecision.RECOMMENDED.value, ReviewDecision.NOT_RECOMMENDED.value):
+            if decision not in (
+                ReviewDecision.RECOMMENDED.value,
+                ReviewDecision.NOT_RECOMMENDED.value,
+            ):
                 decision = ReviewDecision.RECOMMENDED.value
             app.unit_head_recommendation = decision
             app.status = LeaveStatus.AWAITING_ESTABLISHMENT.value
 
-        app.save(update_fields=[
-            "unit_head_user_id", "unit_head_recommendation",
-            "unit_head_remarks", "status", "updated_at",
-        ])
+        app.save(
+            update_fields=[
+                "unit_head_user_id",
+                "unit_head_recommendation",
+                "unit_head_remarks",
+                "status",
+                "updated_at",
+            ]
+        )
 
         LeaveActionLog.objects.create(
             application=app,
@@ -79,7 +90,7 @@ def route_at_establishment(
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.status != LeaveStatus.AWAITING_ESTABLISHMENT.value:
             raise ConflictError("Application is not in AWAITING_ESTABLISHMENT.")
@@ -107,12 +118,12 @@ def final_sanction(
     decision: str,
     remarks: str = "",
 ) -> LeaveApplication:
-    """Final sanctioning decision by competent authority (EL-UC-005, BR-EL-018)."""
+    """Final sanctioning decision by competent authority (EL-UC-005, BR-EL-018, BR-EL-025)."""
     with transaction.atomic():
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.status != LeaveStatus.AWAITING_SANCTION.value:
             raise ConflictError("Application is not in AWAITING_SANCTION.")
@@ -133,14 +144,31 @@ def final_sanction(
             bal.balance -= app.days_count
             bal.availed += app.days_count
             bal.save(update_fields=["balance", "availed", "updated_at"])
+
+            # BR-EL-025: If this application is an extension, update parent leave
+            if app.parent_leave_id:
+                try:
+                    parent = LeaveApplication.objects.select_for_update().get(
+                        pk=app.parent_leave_id
+                    )
+                    parent.end_date = app.end_date
+                    parent.days_count += app.days_count
+                    parent.save(update_fields=["end_date", "days_count", "updated_at"])
+                except LeaveApplication.DoesNotExist:
+                    pass
         else:
             app.status = LeaveStatus.REJECTED.value
             app.sanction_decision = ReviewDecision.REJECTED.value
 
-        app.save(update_fields=[
-            "sanctioning_authority_user_id", "sanction_decision",
-            "sanction_remarks", "status", "updated_at",
-        ])
+        app.save(
+            update_fields=[
+                "sanctioning_authority_user_id",
+                "sanction_decision",
+                "sanction_remarks",
+                "status",
+                "updated_at",
+            ]
+        )
 
         LeaveActionLog.objects.create(
             application=app,

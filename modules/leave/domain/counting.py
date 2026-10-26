@@ -1,4 +1,5 @@
 """Leave day counting algorithms adhering to BR-EL-011 and BR-EL-012."""
+
 from datetime import date, timedelta
 from decimal import Decimal
 
@@ -14,7 +15,7 @@ def calculate_leave_days(
     closed_holiday_dates: set[date] | None = None,
 ) -> Decimal:
     """Calculate the number of leave days for a given period and category.
-    
+
     Rules:
     - BR-EL-011: CL supports first-half and second-half requests consuming 0.5 days.
       Half-day request must have start_date == end_date.

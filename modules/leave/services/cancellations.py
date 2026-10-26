@@ -1,4 +1,5 @@
 """Approved leave cancellation workflow (CW-EL-02, EL-UC-008)."""
+
 from datetime import date
 
 from django.db import transaction
@@ -20,7 +21,7 @@ def request_cancellation(
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.applicant_user_id != principal.user_id:
             raise ConflictError("You can only request cancellation for your own leave.")
@@ -32,13 +33,20 @@ def request_cancellation(
                 today=date.today(),
             )
         except DomainError as e:
-            raise ConflictError(e.message)
+            raise ConflictError(e.message) from None
 
         from_status = app.status
         app.status = LeaveStatus.AWAITING_CANCELLATION.value
         app.is_cancellation_requested = True
         app.cancellation_reason = reason
-        app.save(update_fields=["status", "is_cancellation_requested", "cancellation_reason", "updated_at"])
+        app.save(
+            update_fields=[
+                "status",
+                "is_cancellation_requested",
+                "cancellation_reason",
+                "updated_at",
+            ]
+        )
 
         LeaveActionLog.objects.create(
             application=app,
@@ -63,7 +71,7 @@ def review_cancellation(
         try:
             app = LeaveApplication.objects.select_for_update().get(pk=application_id)
         except LeaveApplication.DoesNotExist:
-            raise NotFoundError(f"Application #{application_id} not found.")
+            raise NotFoundError(f"Application #{application_id} not found.") from None
 
         if app.status != LeaveStatus.AWAITING_CANCELLATION.value:
             raise ConflictError("Application is not in AWAITING_CANCELLATION.")

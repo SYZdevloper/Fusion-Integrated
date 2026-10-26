@@ -1,4 +1,5 @@
 """Retrospective offline sanctioned leave recording (EL-UC-016, BR-EL-030)."""
+
 from datetime import date
 
 from django.db import transaction
@@ -44,7 +45,8 @@ def record_offline_leave(
             leave_type=leave_type,
         )
         if bal.balance < days:
-            raise ConflictError(f"Insufficient balance ({bal.balance}) for offline entry of {days} days.")
+            msg = f"Insufficient balance ({bal.balance}) for offline entry of {days} days."
+            raise ConflictError(msg)
 
         bal.balance -= days
         bal.availed += days

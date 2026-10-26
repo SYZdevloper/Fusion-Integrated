@@ -1,4 +1,5 @@
 """DRF API views for the Leave module."""
+
 from datetime import date
 
 from drf_spectacular.utils import extend_schema
@@ -331,7 +332,9 @@ class LeaveBalanceListView(APIView):
     )
     def get(self, request):
         target_uid = request.principal.user_id
-        if request.query_params.get("user_id") and request.principal.has_permission("leave.type.manage"):
+        if request.query_params.get("user_id") and request.principal.has_permission(
+            "leave.type.manage"
+        ):
             target_uid = int(request.query_params["user_id"])
 
         year = int(request.query_params.get("year", date.today().year))

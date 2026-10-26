@@ -1,4 +1,5 @@
 """Selectors for substitute requests."""
+
 from django.db.models import QuerySet
 
 from modules.leave.models import LeaveApplication

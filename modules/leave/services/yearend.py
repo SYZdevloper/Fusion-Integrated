@@ -1,4 +1,5 @@
 """Event-triggered year-end leave processing (EL-UC-020, BR-EL-003, BR-EL-007)."""
+
 from decimal import Decimal
 
 from django.db import transaction
@@ -11,15 +12,16 @@ from modules.leave.services.balances import DEFAULT_ENTITLEMENTS
 def execute_year_end_processing(year: int) -> dict:
     """Execute year-end leave category outcomes across all active balances."""
     with transaction.atomic():
-        user_ids = list(LeaveBalance.objects.filter(year=year).values_list("user_id", flat=True).distinct())
+        user_ids = list(
+            LeaveBalance.objects.filter(year=year).values_list("user_id", flat=True).distinct()
+        )
 
         processed_count = 0
         total_vl_converted = Decimal("0.0")
 
         for uid in user_ids:
             balances = {
-                b.leave_type: b.balance
-                for b in LeaveBalance.objects.filter(user_id=uid, year=year)
+                b.leave_type: b.balance for b in LeaveBalance.objects.filter(user_id=uid, year=year)
             }
             is_faculty = "VL" in balances
 
@@ -36,14 +38,15 @@ def execute_year_end_processing(year: int) -> dict:
             categories = ["CL", "RH", "SCL", "COL"]
             if is_faculty:
                 categories.append("VL")
-                # Faculty converted VL creates or increases EL balance (BR-EL-008)
                 if el_carry > Decimal("0.0"):
                     categories.append("EL")
             else:
                 categories.append("EL")
 
             for t_code in categories:
-                entitlement = DEFAULT_ENTITLEMENTS.get(t_code, Decimal("0.0")) if (t_code != "EL" or not is_faculty) else Decimal("0.0")
+                entitlement = DEFAULT_ENTITLEMENTS.get(t_code, Decimal("0.0"))
+                if t_code == "EL" and is_faculty:
+                    entitlement = Decimal("0.0")
                 init_credit = entitlement
                 if t_code == "EL":
                     init_credit += el_carry

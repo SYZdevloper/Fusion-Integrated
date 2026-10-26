@@ -34,10 +34,18 @@ class InvalidStateTransitionError(DomainError):
 
 
 class VacationCalendarMismatchError(DomainError):
-    def __init__(self, message: str = "Vacation Leave (VL) can only be availed during published academic vacation periods."):
+    def __init__(
+        self,
+        message: str = (
+            "Vacation Leave (VL) can only be availed during published academic vacation periods."
+        ),
+    ):
         super().__init__(message, code="vacation_mismatch")
 
 
 class RestrictedHolidayMismatchError(DomainError):
-    def __init__(self, message: str = "Restricted Holiday (RH) must match a published restricted holiday date."):
+    def __init__(
+        self,
+        message: str = ("Restricted Holiday (RH) must match a published restricted holiday date."),
+    ):
         super().__init__(message, code="restricted_holiday_mismatch")

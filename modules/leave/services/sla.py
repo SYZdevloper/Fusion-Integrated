@@ -1,4 +1,5 @@
 """Event-triggered SLA threshold processing (EL-UC-021, BR-EL-031, BR-EL-032)."""
+
 from django.utils import timezone
 
 from modules.leave.models import LeaveActionLog, LeaveApplication, LeaveSLAConfig
@@ -37,7 +38,7 @@ def process_sla_thresholds() -> dict:
                 action="SLA_ESCALATE",
                 from_status=app.status,
                 to_status=app.status,
-                remarks=f"SLA Escalation: task pending for {int(age_hours)}h (threshold={esc_threshold}h)",
+                remarks=f"SLA Escalation: pending {int(age_hours)}h (limit {esc_threshold}h)",
             )
         elif age_hours >= rem_threshold:
             reminded += 1
@@ -47,7 +48,7 @@ def process_sla_thresholds() -> dict:
                 action="SLA_REMIND",
                 from_status=app.status,
                 to_status=app.status,
-                remarks=f"SLA Reminder: task pending for {int(age_hours)}h (threshold={rem_threshold}h)",
+                remarks=f"SLA Reminder: pending {int(age_hours)}h (limit {rem_threshold}h)",
             )
 
     return {"reminded": reminded, "escalated": escalated}
